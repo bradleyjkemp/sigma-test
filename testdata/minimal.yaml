@@ -1,0 +1,13 @@
+detection:
+  selection:
+    foo: bar
+  condition: selection
+
+testcases:
+  match:
+    - foo: bar
+
+  dont-match:
+    - foo: foo
+    - bar: foo
+    - foo: baz

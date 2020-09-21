@@ -1,0 +1,8 @@
+detection:
+  foo:
+    a: foo
+  bar:
+    b: bar
+  condition:
+    - not foo and bar
+    - foo and not bar

@@ -1,0 +1,23 @@
+detection:
+  foo:
+    a: foo
+  bar:
+    b: bar
+  condition: foo or bar
+
+testcases:
+  match:
+    - a: foo
+      b: bar
+
+    - a: foo
+      b: bar
+      c: baz
+
+    - a: foo
+
+    - b: bar
+
+  dont-match:
+    - a: bar
+      b: foo
