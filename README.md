@@ -1,4 +1,4 @@
-# sigma-test
+# sigma-test ![Build Status](https://github.com/bradleyjkemp/sigma-test/workflows/Go/badge.svg) [![GitHub release](https://img.shields.io/github/release/bradleyjkemp/sigma-test.svg)](https://github.com/bradleyjkemp/sigma-test/releases/latest)
 `sigma-test` is a test case runner for [Sigma](https://github.com/Neo23x0/sigma) rules.
 It lets you specify example events alongside your detection rules and assert that your rule matches what you expect.
 
