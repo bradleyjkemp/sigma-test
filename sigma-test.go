@@ -11,6 +11,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/bradleyjkemp/sigma-go"
+	"github.com/bradleyjkemp/sigma-go/evaluator"
 	"gopkg.in/yaml.v3"
 )
 
@@ -94,7 +95,7 @@ func testFile(r sigma.Rule, match, dontMatch []map[string]interface{}) (error, [
 	if len(match) == 0 && len(dontMatch) == 0 {
 		return errNoTests, nil
 	}
-	rule := sigma.Evaluator(r)
+	rule := evaluator.ForRule(r)
 	pass := true
 	var failures []string
 

@@ -1,0 +1,27 @@
+detection:
+  foo:
+    a: foo
+  bar:
+    b: bar
+  baz:
+    c: baz
+  condition: 1 of ba* # equivalent to "bar or baz"
+
+testcases:
+  match:
+    - a: foo
+      b: bar
+
+    - a: foo
+      b: bar
+      c: baz
+
+    - b: bar
+
+    - c: baz
+
+  dont-match:
+    - a: foo
+
+    - a: bar
+      b: foo
