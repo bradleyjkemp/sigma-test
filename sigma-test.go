@@ -5,7 +5,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"text/tabwriter"
@@ -16,7 +15,8 @@ import (
 )
 
 var (
-	fRecursive = flag.Bool("recursive", true, "whether to test directories recursively")
+	fRecursive   = flag.Bool("recursive", true, "whether to test directories recursively")
+	fConfigFiles = flag.String("config-files", "", "a pattern for config files to use when evaluating rules")
 )
 
 func main() {
@@ -26,9 +26,15 @@ func main() {
 		paths = []string{"."}
 	}
 
+	configs, err := loadConfigs()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
 	allPassed := true
 	for _, path := range paths {
-		pass, err := run(path, *fRecursive)
+		pass, err := run(path, configs, *fRecursive)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
@@ -41,7 +47,7 @@ func main() {
 	}
 }
 
-func run(root string, recursive bool) (bool, error) {
+func run(root string, configs []sigma.Config, recursive bool) (bool, error) {
 	results := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
 	passed := true
 
@@ -57,7 +63,7 @@ func run(root string, recursive bool) (bool, error) {
 			return nil
 		}
 
-		contents, err := ioutil.ReadFile(path)
+		contents, err := os.ReadFile(path)
 		if err != nil {
 			return fmt.Errorf("error reading %s: %w", path, err)
 		}
@@ -67,7 +73,7 @@ func run(root string, recursive bool) (bool, error) {
 			return fmt.Errorf("error parsing %s: %w", path, err)
 		}
 
-		err, failures := testFile(rule, match, dontMatch)
+		err, failures := testFile(rule, configs, match, dontMatch)
 		if err != nil {
 			if errors.Is(err, errFailedTests) {
 				passed = false
@@ -86,16 +92,48 @@ func run(root string, recursive bool) (bool, error) {
 	return passed, err
 }
 
+func loadConfigs() ([]sigma.Config, error) {
+	if *fConfigFiles == "" {
+		return nil, nil
+	}
+	var configs []sigma.Config
+	configFilepaths, err := filepath.Glob(*fConfigFiles)
+	if err != nil {
+		return nil, fmt.Errorf("failed to identify config files: %w", err)
+	}
+
+	for _, configFilepath := range configFilepaths {
+		configBytes, err := os.ReadFile(configFilepath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read config file %s: %w", configFilepath, err)
+		}
+
+		config, err := sigma.ParseConfig(configBytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse config file %s: %w", configFilepath, err)
+		}
+
+		for _, backend := range config.Backends {
+			if backend == "github.com/bradleyjkemp/sigma-go" {
+				configs = append(configs, config)
+				break
+			}
+		}
+	}
+
+	return configs, nil
+}
+
 var (
 	errNoTests     = fmt.Errorf("SKIP")
 	errFailedTests = fmt.Errorf("FAIL")
 )
 
-func testFile(r sigma.Rule, match, dontMatch []map[string]interface{}) (error, []string) {
+func testFile(r sigma.Rule, configs []sigma.Config, match, dontMatch []map[string]interface{}) (error, []string) {
 	if len(match) == 0 && len(dontMatch) == 0 {
 		return errNoTests, nil
 	}
-	rule := evaluator.ForRule(r)
+	rule := evaluator.ForRule(r, evaluator.WithConfig(configs...))
 	pass := true
 	var failures []string
 

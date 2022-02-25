@@ -13,7 +13,12 @@ func TestExamples(t *testing.T) {
 		}
 
 		t.Run(path, func(t *testing.T) {
-			pass, err := run(path, true)
+			*fConfigFiles = "testdata/config.yaml"
+			configs, err := loadConfigs()
+			if err != nil {
+				t.Fatal(err)
+			}
+			pass, err := run(path, configs, true)
 			if err != nil {
 				t.Fatal(err)
 			}
