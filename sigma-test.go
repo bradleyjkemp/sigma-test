@@ -101,7 +101,7 @@ func testFile(r sigma.Rule, match, dontMatch []map[string]interface{}) (error, [
 
 	for _, matchCase := range match {
 		// TODO: what happens with aggregations...?
-		if rule.Matches(context.Background(), matchCase) == false {
+		if result, _ := rule.Matches(context.Background(), matchCase); result.Match == false {
 			pass = false
 			failures = append(failures, fmt.Sprintf("%v should have matched", matchCase))
 		}
@@ -109,7 +109,7 @@ func testFile(r sigma.Rule, match, dontMatch []map[string]interface{}) (error, [
 
 	for _, dontMatchCase := range dontMatch {
 		// TODO: what happens with aggregations...?
-		if rule.Matches(context.Background(), dontMatchCase) {
+		if result, _ := rule.Matches(context.Background(), dontMatchCase); result.Match {
 			pass = false
 			failures = append(failures, fmt.Sprintf("%v shouldn't have matched", dontMatchCase))
 		}
