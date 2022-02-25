@@ -68,6 +68,10 @@ func run(root string, configs []sigma.Config, recursive bool) (bool, error) {
 			return fmt.Errorf("error reading %s: %w", path, err)
 		}
 
+		if sigma.InferFileType(contents) != sigma.RuleFile {
+			return nil
+		}
+
 		rule, match, dontMatch, err := parseRule(contents)
 		if err != nil {
 			return fmt.Errorf("error parsing %s: %w", path, err)
