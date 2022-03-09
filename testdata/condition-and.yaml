@@ -1,6 +1,0 @@
-detection:
-  foo:
-    a: foo
-  bar:
-    b: bar
-  condition: foo and bar
