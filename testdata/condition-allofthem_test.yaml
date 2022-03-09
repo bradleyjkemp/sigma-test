@@ -1,0 +1,24 @@
+match: true
+event:
+  a: foo
+  b: bar
+---
+match: true
+event:
+  a: foo
+  b: bar
+  c: baz
+---
+match: false
+event:
+  a: foo
+---
+match: false
+event:
+  b: bar
+---
+match: false
+event:
+  a: bar
+  b: foo
+---
