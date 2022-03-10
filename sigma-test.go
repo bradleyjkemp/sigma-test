@@ -5,8 +5,11 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/bradleyjkemp/sigma-go"
@@ -71,13 +74,12 @@ func run(root string, configs []sigma.Config, recursive bool) (bool, error) {
 		if sigma.InferFileType(contents) != sigma.RuleFile {
 			return nil
 		}
-
-		rule, match, dontMatch, err := parseRule(contents)
+		rule, err := sigma.ParseRule(contents)
 		if err != nil {
 			return fmt.Errorf("error parsing %s: %w", path, err)
 		}
 
-		err, failures := testFile(rule, configs, match, dontMatch)
+		err, failures := testFile(path, rule, configs)
 		if err != nil {
 			if errors.Is(err, errFailedTests) {
 				passed = false
@@ -133,34 +135,72 @@ var (
 	errFailedTests = fmt.Errorf("FAIL")
 )
 
-func testFile(r sigma.Rule, configs []sigma.Config, match, dontMatch []map[string]interface{}) (error, []string) {
-	if len(match) == 0 && len(dontMatch) == 0 {
+func testFile(path string, r sigma.Rule, configs []sigma.Config) (error, []string) {
+	ext := filepath.Ext(path)
+	testFilename := strings.TrimSuffix(path, ext) + "_test" + ext
+
+	testCases, err := getTestCases(testFilename)
+	if err != nil {
+		return err, nil
+	}
+	if len(testCases) == 0 {
 		return errNoTests, nil
 	}
+
 	rule := evaluator.ForRule(r, evaluator.WithConfig(configs...))
 	pass := true
 	var failures []string
 
-	for _, matchCase := range match {
-		// TODO: what happens with aggregations...?
-		if result, _ := rule.Matches(context.Background(), matchCase); result.Match == false {
+	for _, tc := range testCases {
+		shouldMatch := true
+		if tc.Match != nil { // by default, test cases match
+			shouldMatch = *tc.Match
+		}
+		result, _ := rule.Matches(context.Background(), tc.Event)
+		switch {
+		case shouldMatch && !result.Match:
 			pass = false
-			failures = append(failures, fmt.Sprintf("%v should have matched", matchCase))
+			failures = append(failures, fmt.Sprintf("%v should have matched", tc.Event))
+		case !shouldMatch && result.Match:
+			pass = false
+			failures = append(failures, fmt.Sprintf("%v shouldn't have matched", tc.Event))
 		}
 	}
-
-	for _, dontMatchCase := range dontMatch {
-		// TODO: what happens with aggregations...?
-		if result, _ := rule.Matches(context.Background(), dontMatchCase); result.Match {
-			pass = false
-			failures = append(failures, fmt.Sprintf("%v shouldn't have matched", dontMatchCase))
-		}
-	}
-
 	if pass {
 		return nil, nil
 	}
 	return errFailedTests, failures
+}
+
+func getTestCases(path string) ([]TestCase, error) {
+	testFile, err := os.Open(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	var testCases []TestCase
+	decoder := yaml.NewDecoder(testFile)
+	for {
+		testCase := TestCase{}
+		err = decoder.Decode(&testCase)
+		if err != nil {
+			break
+		}
+		testCases = append(testCases, testCase)
+	}
+	if err != nil && err != io.EOF {
+		return nil, fmt.Errorf("error parsing test cases: %w", err)
+	}
+
+	// If there's a trailing end of document marker ("---") then there's an empty final test case we need to remove
+	if testCases[len(testCases)-1].Event == nil {
+		testCases = testCases[:len(testCases)-1]
+	}
+
+	return testCases, nil
 }
 
 type TestCases struct {

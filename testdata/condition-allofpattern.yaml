@@ -6,21 +6,3 @@ detection:
   baz:
     c: baz
   condition: all of ba* # equivalent to "bar and baz"
-
-testcases:
-  match:
-    - a: foo
-      b: bar
-      c: baz
-
-    - a: aaa
-      b: bar
-      c: baz
-
-  dont-match:
-    - a: foo
-
-    - b: bar
-
-    - a: bar
-      c: baz

@@ -11,7 +11,7 @@ Install:
 
 ## Usage
 
-Let's take a look at a simple (correct) example:
+Given a rule file `rules/example.yml`:
 ```yaml
 title: Example of using sigma-test
 description: Demos a passing sigma-test rule
@@ -24,23 +24,29 @@ detection:
       - alice
       - bob
   condition: ssh and not permitted_user
-# A standard(ish) Sigma rule 👆 
-
-# How to add your test cases 👇
-testcases:
-  match:
-    - dst_port: 22
-      user: charlie
-
-  dont-match:
-    # Shouldn't match non ssh traffic
-    - dst_port: 443
-      user: charlie
-
-    # Shouldn't match authorized users
-    - dst_port: 22
-      user: alice
 ``` 
+
+Test cases are stored in `rules/example_test.yml`, one test case per YAML document:
+```yaml
+---
+match: true
+event:
+  dst_port: 22
+  user: charlie
+---
+# Shouldn't match non ssh traffic
+match: false
+event:
+  dst_port: 443
+  user: charlie
+---
+# Shouldn't match authorized users
+match: false
+event:
+  dst_port: 22
+  user: alice
+```
+
 Running `sigma-test` outputs that, as expected, the tests passed:
 ```bash
 > sigma-test ./rules
