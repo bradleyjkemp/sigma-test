@@ -147,7 +147,10 @@ func testFile(path string, r sigma.Rule, configs []sigma.Config) (error, []strin
 		return errNoTests, nil
 	}
 
-	rule := evaluator.ForRule(r, evaluator.WithConfig(configs...))
+	rule := evaluator.ForRule(r, evaluator.WithConfig(configs...), evaluator.WithPlaceholderExpander(func(ctx context.Context, placeholderName string) ([]string, error) {
+		// TODO: allow test-writers to supply placeholder values
+		return nil, nil
+	}))
 	pass := true
 	var failures []string
 
