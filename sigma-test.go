@@ -81,7 +81,7 @@ func run(root string, configs []sigma.Config, recursive bool) (bool, error) {
 
 		err, failures := testFile(path, rule, configs)
 		if err != nil {
-			if errors.Is(err, errFailedTests) {
+			if errors.Is(err, errFailedTests) || errors.Is(err, errNoLogSources) {
 				passed = false
 			}
 			fmt.Fprintf(results, "%s\t%v\t\n", path, err)
@@ -131,8 +131,9 @@ func loadConfigs() ([]sigma.Config, error) {
 }
 
 var (
-	errNoTests     = fmt.Errorf("SKIP")
-	errFailedTests = fmt.Errorf("FAIL")
+	errNoTests      = fmt.Errorf("SKIP")
+	errFailedTests  = fmt.Errorf("FAIL")
+	errNoLogSources = fmt.Errorf("ERROR: No relevant logsource configurations")
 )
 
 func testFile(path string, r sigma.Rule, configs []sigma.Config) (error, []string) {
@@ -147,7 +148,21 @@ func testFile(path string, r sigma.Rule, configs []sigma.Config) (error, []strin
 		return errNoTests, nil
 	}
 
-	rule := evaluator.ForRule(r, evaluator.WithConfig(configs...), evaluator.WithPlaceholderExpander(func(ctx context.Context, placeholderName string) ([]string, error) {
+	// only use logsources that are relevant for this rule. This avoids having conflicts with other logsources with the same field names
+	var relevantConfigs []sigma.Config
+	for _, c := range configs {
+		for _, v := range c.Logsources {
+			if (v.Logsource.Product == r.Logsource.Product || v.Rewrite.Product == r.Logsource.Product) && (v.Logsource.Category == r.Logsource.Category || v.Rewrite.Category == r.Logsource.Category) {
+				relevantConfigs = append(relevantConfigs, c)
+			}
+		}
+	}
+
+	if len(relevantConfigs) == 0 {
+		return errNoLogSources, nil
+	}
+
+	rule := evaluator.ForRule(r, evaluator.WithConfig(relevantConfigs...), evaluator.WithPlaceholderExpander(func(ctx context.Context, placeholderName string) ([]string, error) {
 		// TODO: allow test-writers to supply placeholder values
 		return nil, nil
 	}))
