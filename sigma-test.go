@@ -20,6 +20,7 @@ import (
 var (
 	fRecursive   = flag.Bool("recursive", true, "whether to test directories recursively")
 	fConfigFiles = flag.String("config-files", "", "a pattern for config files to use when evaluating rules")
+	fTestPath    = flag.String("test-path", "./", "the path of the test file(s)")
 )
 
 func main() {
@@ -37,7 +38,7 @@ func main() {
 
 	allPassed := true
 	for _, path := range paths {
-		pass, err := run(path, configs, *fRecursive)
+		pass, err := run(path, configs, *fRecursive, *fTestPath)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
@@ -50,7 +51,7 @@ func main() {
 	}
 }
 
-func run(root string, configs []sigma.Config, recursive bool) (bool, error) {
+func run(root string, configs []sigma.Config, recursive bool, testPath string) (bool, error) {
 	results := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
 	passed := true
 
@@ -79,7 +80,7 @@ func run(root string, configs []sigma.Config, recursive bool) (bool, error) {
 			return fmt.Errorf("error parsing %s: %w", path, err)
 		}
 
-		err, failures := testFile(path, rule, configs)
+		err, failures := testFile(path, rule, configs, testPath)
 		if err != nil {
 			if errors.Is(err, errFailedTests) {
 				passed = false
@@ -135,9 +136,9 @@ var (
 	errFailedTests = fmt.Errorf("FAIL")
 )
 
-func testFile(path string, r sigma.Rule, configs []sigma.Config) (error, []string) {
+func testFile(path string, r sigma.Rule, configs []sigma.Config, testPath string) (error, []string) {
 	ext := filepath.Ext(path)
-	testFilename := strings.TrimSuffix(path, ext) + "_test" + ext
+	testFilename := filepath.Join(testPath, strings.TrimSuffix(filepath.Base(path), ext)+"_test"+ext)
 
 	testCases, err := getTestCases(testFilename)
 	if err != nil {
